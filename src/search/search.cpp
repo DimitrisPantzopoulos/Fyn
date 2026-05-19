@@ -43,20 +43,21 @@ void timer(int milliseconds, std::atomic<bool>& can_search) {
     can_search = false;
 }
 
-int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, int beta, int color) {
+int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, int beta) {
+    nodes_searched++;
     HANDLE_CANCEL_SEARCH(can_search);
     HANDLE_REPETITION(board);
 
     const chess::Movelist legal_moves = order_moves(board, chess::Move::NO_MOVE, true);
 
-    int stand_pat = Evaluation::evaluation(board, color);
+    int stand_pat = Evaluation::evaluation(board);
 
     if (stand_pat >= beta) { return beta; }
     if (stand_pat > alpha) { alpha = stand_pat; }
 
     for (const chess::Move &move : legal_moves) {
         board.makeMove(move);
-        int eval = -quiescence_search(board, ply + 1, -beta, -alpha, -color);
+        int eval = -quiescence_search(board, ply + 1, -beta, -alpha);
         board.unmakeMove(move);
         
         HANDLE_CANCEL_SEARCH(can_search);
@@ -68,7 +69,8 @@ int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, i
     return alpha;
 }
 
-int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, int beta, int color) {
+int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, int beta) {
+    nodes_searched++;
     HANDLE_CANCEL_SEARCH(can_search);
     HANDLE_REPETITION(board);
 
@@ -76,16 +78,16 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
     uint64_t    hash         = board.hash();
     int         origin_alpha = alpha;
 
-    TranspositionEntry tt_entry;
+    TranspositionTable::TranspositionEntry tt_entry;
 
     if (tt_table.retrieve(hash, tt_entry)){
         if (tt_entry.depth >= depth) {
             int tt_eval = tt_entry.eval;
             hash_move   = tt_entry.best_move;
             
-            if      (tt_entry.type == TTNodeType::LOWERBOUND)            { alpha = std::max(alpha, tt_eval); }
-            else if (tt_entry.type == TTNodeType::UPPERBOUND)            { beta  = std::min(beta, tt_eval);  }
-            if      (tt_entry.type == TTNodeType::EXACT || alpha > beta) { return tt_eval; }
+            if      (tt_entry.type == TranspositionTable::TTNodeType::LOWERBOUND)             { alpha = std::max(alpha, tt_eval); }
+            else if (tt_entry.type == TranspositionTable::TTNodeType::UPPERBOUND)             { beta  = std::min(beta, tt_eval);  }
+            if      (tt_entry.type == TranspositionTable::TTNodeType::EXACT || alpha >= beta) { return tt_eval; }
         }
     }
 
@@ -93,13 +95,13 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
     
     HANDLE_EMPTY_LEGAL_MOVES(board, legal_moves, ply);
 
-    if (depth <= 0) { return quiescence_search(board, ply, alpha, beta, color); }
+    if (depth <= 0) { return quiescence_search(board, ply, alpha, beta); }
  
     for (int i=0; i<legal_moves.size(); i++) {
         const chess::Move move = legal_moves[i];
 
         board.makeMove(move);
-        int eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha, -color); 
+        int eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha); 
         board.unmakeMove(move);
         
         HANDLE_CANCEL_SEARCH(can_search);
@@ -108,7 +110,7 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         if (alpha >= beta) { return beta;  }
     }
 
-    tt_table.store(hash, get_node_type(origin_alpha, alpha, beta), depth, alpha, hash_move);
+    tt_table.store(hash, TranspositionTable::get_node_type(origin_alpha, alpha, beta), depth, alpha, hash_move);
     return alpha;
 }
 
@@ -121,31 +123,38 @@ void Search::Search::search_position(UCI::Info info) {
     chess::Move best_move   = chess::Move::NO_MOVE;
     int         best_eval   = -Limits::INF;
     int         deepest_ply = 0;
-
-    int color = info.board.sideToMove() == chess::Color::WHITE ? 1 : -1;
-
+    nodes_searched = 0;
+    
     for (int depth = 1; depth <= info.depth; depth++) {
         const chess::Movelist legal_moves = order_moves(info.board, best_move, false);
-
+        
+        // Reset
+        best_eval = -Limits::INF;
         int alpha = -Limits::INF;
         int beta  = Limits::INF;
 
         for (const chess::Move &move : legal_moves) {
             info.board.makeMove(move);
-            int eval = -negamax(info.board, Limits::START_PLY + 1, depth - 1, alpha, beta, -color);
+            int eval = -negamax(info.board, Limits::START_PLY + 1, depth - 1, -beta, -alpha);
             info.board.unmakeMove(move);
             
             if (!can_search) { HANDLE_JOIN_TIMER_THREAD(timer_thread); break;}
         
-            if (eval > eval) {
-                eval        = eval;
+            if (eval > best_eval) {
+                best_eval   = eval;
                 best_move   = move;
                 deepest_ply = depth;
             }
         }
+
+        std::cout << "info depth " << depth << " score cp " << best_eval << " nodes " << nodes_searched << std::endl;
     }
 
     HANDLE_JOIN_TIMER_THREAD(timer_thread);
 
-    std::cout << "info score cp " << best_eval << " depth " << deepest_ply << "\n" << "bestmove " << chess::uci::moveToUci(best_move) << std::endl;
+    const std::string best_move_uci = (best_move == chess::Move::NO_MOVE) ? "0000" : chess::uci::moveToUci(best_move);
+
+    std::cout << "info score cp " << best_eval << " depth " << deepest_ply 
+              << " nodes "        << nodes_searched << "\n" 
+              << "bestmove "      << best_move_uci << std::endl;
 }

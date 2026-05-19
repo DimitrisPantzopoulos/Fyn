@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
-#include <cassert>
 #include <cstdlib>
 #include <string>
 #include <thread>
@@ -58,20 +57,24 @@ namespace UCI {
     void go_info(Info& info, const std::vector<std::string>& tokens) {
         int idx = 0;
 
-        while (idx < tokens.size()) {
-            if (tokens[idx] == "wtime") {
+        auto has_value = [&](int i) {
+            return (i + 1) < static_cast<int>(tokens.size());
+        };
+
+        while (idx < static_cast<int>(tokens.size())) {
+            if (tokens[idx] == "wtime" && has_value(idx)) {
                 info.w_time = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
-            } else if (tokens[idx] == "btime") {
+            } else if (tokens[idx] == "btime" && has_value(idx)) {
                 info.b_time = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
-            } else if (tokens[idx] == "winc") {
+            } else if (tokens[idx] == "winc" && has_value(idx)) {
                 info.w_inc = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
-            } else if (tokens[idx] == "binc") {
+            } else if (tokens[idx] == "binc" && has_value(idx)) {
                 info.b_inc = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
-            } else if (tokens[idx] == "depth") {
+            } else if (tokens[idx] == "depth" && has_value(idx)) {
                 info.depth = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
             } else {
@@ -95,7 +98,7 @@ namespace UCI {
         print_banner();
 
         // Standard UCI info: engine name, and author
-        std::cout << "id name Fyn v0.01" << std::endl;
+        std::cout << "id name Fyn" << std::endl;
         std::cout << "id author Dimiboi " << std::endl;
         std::cout << "uciok" << std::endl;
     }
@@ -119,7 +122,7 @@ namespace UCI {
         info.moves.clear();
 
         // Reset internal tables
-        fyn.tt_table.clear();
+        fyn.clear_tables();
 
         // Reset timing info
         info.w_time = 0;
@@ -187,8 +190,10 @@ namespace UCI {
         while (std::getline(std::cin, cmd)) {
             std::vector<std::string> tokens = split(cmd);
 
-            // Check size is not zero and get the keyword
-            assert(("[Fyn] Command from UCI protocol was empty.", tokens.size() > 0));
+            if (tokens.empty()) {
+                continue;
+            }
+
             std::string init_token = tokens[0];
             Command keyword = find_keyword(init_token);
             

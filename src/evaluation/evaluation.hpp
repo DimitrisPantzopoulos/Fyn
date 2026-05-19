@@ -204,6 +204,6 @@ namespace Evaluation{
         return past_pawn_eval;
     }
 
-    int evaluation(const chess::Board& board, const int color);
+    int evaluation(const chess::Board& board);
 }
 #endif

@@ -8,7 +8,6 @@ SRC_DIR    = SCRIPT_DIR
 REPO_ROOT  = os.path.dirname(SRC_DIR)
 
 def get_cpp_files() -> list[str]:
-    # Recursively find project .cpp files and skip vendor/test trees.
     exclude_dirs = {
         "Testing",
         "src/chess-library",
@@ -67,7 +66,6 @@ def check_lib_in_dir() -> bool:
 def build_fyn() -> None:
     print("🛠️  [Fyn] Chess library found. Compiling Fyn...")
     build_cmd = get_build_cmd()
-    print(f"[Fyn] Build command: {build_cmd}")
     if run_subprocess(build_cmd):
         print("✅ [Fyn] Fyn Build complete.")
         print("🎮 [Fyn] To use Fyn type in terminal: ./Fyn")

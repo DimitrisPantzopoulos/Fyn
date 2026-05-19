@@ -10,6 +10,7 @@
 #include <limits>
 #include <array>
 #include <atomic>
+#include <chrono>
 
 namespace Search {
     struct Limits {
@@ -24,14 +25,17 @@ namespace Search {
     class Search {
         public:
             void search_position(UCI::Info info);
-
-            TranspositionTable tt_table;
             
-        private:
-            std::atomic<bool> can_search {true};
+            void clear_tables() { tt_table.clear(); }
 
-            int quiescence_search(chess::Board& board, int ply, int alpha, int beta, int color);
-            int negamax(chess::Board& board, int ply, int ply_remaining, int alpha, int beta, int color);
+        private:
+            TranspositionTable::TranspositionTable tt_table;
+            std::atomic<bool> can_search {true};
+            int nodes_searched = 0;
+            std::chrono::high_resolution_clock::time_point search_start;
+
+            int quiescence_search(chess::Board& board, int ply, int alpha, int beta);
+            int negamax(chess::Board& board, int ply, int ply_remaining, int alpha, int beta);
     };
 }
 
