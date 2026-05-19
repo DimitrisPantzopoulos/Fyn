@@ -43,6 +43,15 @@ void timer(int milliseconds, std::atomic<bool>& can_search) {
     can_search = false;
 }
 
+void print_search_info(int best_eval, int depth, int nodes, chess::Move best_move, bool print_best_move){
+    const std::string best_move_uci = (best_move == chess::Move::NO_MOVE) ? "0000" : chess::uci::moveToUci(best_move);
+
+    std::cout << "info score cp " << best_eval << " depth " << depth << " nodes "  << nodes << "\n";
+
+    if (print_best_move)
+        std::cout << "bestmove "      << best_move_uci << std::endl;
+}
+
 int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, int beta) {
     nodes_searched++;
     HANDLE_CANCEL_SEARCH(can_search);
@@ -122,7 +131,7 @@ void Search::Search::search_position(UCI::Info info) {
     // Search Position
     chess::Move best_move   = chess::Move::NO_MOVE;
     int         best_eval   = -Limits::INF;
-    int         deepest_ply = 0;
+    int         depth_searched = 0;
     nodes_searched = 0;
     
     for (int depth = 1; depth <= info.depth; depth++) {
@@ -143,18 +152,15 @@ void Search::Search::search_position(UCI::Info info) {
             if (eval > best_eval) {
                 best_eval   = eval;
                 best_move   = move;
-                deepest_ply = depth;
+                depth_searched = depth;
             }
         }
 
-        std::cout << "info depth " << depth << " score cp " << best_eval << " nodes " << nodes_searched << std::endl;
+        if (!can_search) { break; }
+
+        print_search_info(best_eval, depth, nodes_searched, best_move, false);
     }
 
     HANDLE_JOIN_TIMER_THREAD(timer_thread);
-
-    const std::string best_move_uci = (best_move == chess::Move::NO_MOVE) ? "0000" : chess::uci::moveToUci(best_move);
-
-    std::cout << "info score cp " << best_eval << " depth " << deepest_ply 
-              << " nodes "        << nodes_searched << "\n" 
-              << "bestmove "      << best_move_uci << std::endl;
+    print_search_info(best_eval, depth_searched, nodes_searched, best_move, true);
 }

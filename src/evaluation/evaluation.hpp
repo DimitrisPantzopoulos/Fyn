@@ -56,7 +56,17 @@ namespace Evaluation{
         static constexpr uint8_t NO_PIECE_TYPES = 6;
         static constexpr uint8_t MAX_PHASE      = 24;
 
-        static constexpr Score past_pawn = {100, 150};
+        // Rank-based passed pawn bonuses
+        static constexpr Score past_pawn[8] = {
+            {0, 0},    // rank 1 
+            {0, 0},    // rank 2 
+            {10, 20},  // rank 3
+            {20, 40},  // rank 4
+            {30, 60},  // rank 5
+            {50, 100}, // rank 6
+            {80, 160}, // rank 7
+            {0, 0}     // rank 8 
+        };
 
         static constexpr chess::PieceType piece_types[NO_PIECE_TYPES] = {
             chess::PieceType::PAWN,
@@ -181,27 +191,25 @@ namespace Evaluation{
     }
 
     inline Score pawn_evaluation(const chess::Board& board) {
+        // Past Pawn Evaluation is done using my PPE algorithm (https://www.reddit.com/r/chessprogramming/comments/1k416zx/ppe_parallel_pawn_evaluation_algorithm_for_hce/).
         const chess::Bitboard white_pawns = board.pieces(chess::PieceType::PAWN, chess::Color::WHITE);
         const chess::Bitboard black_pawns = board.pieces(chess::PieceType::PAWN, chess::Color::BLACK);
 
-        // Past Pawn Evaluation is done using my PPE algorithm (https://www.reddit.com/r/chessprogramming/comments/1k416zx/ppe_parallel_pawn_evaluation_algorithm_for_hce/).
         const chess::Bitboard white_pawns_north_fill = Bitboard::north_fill(white_pawns);
         const chess::Bitboard black_pawns_south_fill = Bitboard::south_fill(black_pawns);
 
         const chess::Bitboard white_adjacent = ((white_pawns_north_fill & Bitboard::NOT_H_FILE) << 9) | ((white_pawns_north_fill & Bitboard::NOT_A_FILE) << 7);
         const chess::Bitboard black_adjacent = ((black_pawns_south_fill & Bitboard::NOT_A_FILE) >> 9) | ((black_pawns_south_fill & Bitboard::NOT_H_FILE) >> 7);
 
-        // Passed pawn calculation
-        const Score past_pawn_eval = 
-            Params::past_pawn * (
-                // White past pawns
-                (~(black_pawns_south_fill | black_adjacent) & white_pawns).count() - 
-                
-                // Black past pawns
-                (~(white_pawns_north_fill | white_adjacent) & black_pawns).count()
-            );
-        
-        return past_pawn_eval;
+        Score total = {0, 0};
+
+        chess::Bitboard white_passed = (~(black_pawns_south_fill | black_adjacent) & white_pawns);
+        chess::Bitboard black_passed = (~(white_pawns_north_fill | white_adjacent) & black_pawns);
+
+        while (white_passed) { total += Params::past_pawn[white_passed.pop() / 8]; }
+        while (black_passed) { total -= Params::past_pawn[7 - (black_passed.pop() / 8)]; }
+
+        return total;
     }
 
     int evaluation(const chess::Board& board);

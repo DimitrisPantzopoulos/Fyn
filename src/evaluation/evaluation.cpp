@@ -37,7 +37,7 @@ int Evaluation::evaluation(const chess::Board& board) {
 
     Score total = white_score - black_score;
 
-    // total += Evaluation::pawn_evaluation(board);
+    total += Evaluation::pawn_evaluation(board);
 
     return color * (total.mg * game_phase + total.eg * (Params::MAX_PHASE - game_phase)) / Params::MAX_PHASE;
 }

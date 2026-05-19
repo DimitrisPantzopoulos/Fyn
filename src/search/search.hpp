@@ -10,7 +10,6 @@
 #include <limits>
 #include <array>
 #include <atomic>
-#include <chrono>
 
 namespace Search {
     struct Limits {
@@ -32,8 +31,7 @@ namespace Search {
             TranspositionTable::TranspositionTable tt_table;
             std::atomic<bool> can_search {true};
             int nodes_searched = 0;
-            std::chrono::high_resolution_clock::time_point search_start;
-
+            
             int quiescence_search(chess::Board& board, int ply, int alpha, int beta);
             int negamax(chess::Board& board, int ply, int ply_remaining, int alpha, int beta);
     };
