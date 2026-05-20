@@ -108,9 +108,19 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
  
     for (int i=0; i<legal_moves.size(); i++) {
         const chess::Move move = legal_moves[i];
+        int eval;
 
         board.makeMove(move);
-        int eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha); 
+        // PVS Search
+        if (i == 0) {
+            eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
+        } else {
+            eval = -negamax(board, ply + 1, depth - 1, -(alpha + 1), -alpha);
+
+            if (eval > alpha && eval < beta) {
+                eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
+            }
+        }
         board.unmakeMove(move);
         
         HANDLE_CANCEL_SEARCH(can_search);

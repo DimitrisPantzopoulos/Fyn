@@ -11,15 +11,15 @@ namespace UCI {
         chess::Movelist moves;
 
         // Time info
-        uint16_t w_time;
-        uint16_t b_time;
+        uint32_t w_time = 0;
+        uint32_t b_time = 0;
 
-        uint16_t w_inc;
-        uint16_t b_inc;
+        uint32_t w_inc = 0;
+        uint32_t b_inc = 0;
         
         // Search Info
-        uint16_t milliseconds;
-        uint16_t depth = 256;
+        uint32_t milliseconds = 0;
+        uint32_t depth = 256;
     };
 
     enum Command : uint8_t {

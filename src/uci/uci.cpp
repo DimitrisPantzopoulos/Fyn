@@ -36,7 +36,7 @@ namespace UCI {
         return Command::NONE;
     }
 
-    uint16_t calculate_tts(uint16_t time_remaining, uint16_t inc) {
+    uint32_t calculate_tts(uint32_t time_remaining, uint32_t inc) {
         return (time_remaining / 20) + (inc / 2);
     }
 
@@ -63,19 +63,19 @@ namespace UCI {
 
         while (idx < static_cast<int>(tokens.size())) {
             if (tokens[idx] == "wtime" && has_value(idx)) {
-                info.w_time = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
+                info.w_time = static_cast<uint32_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
             } else if (tokens[idx] == "btime" && has_value(idx)) {
-                info.b_time = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
+                info.b_time = static_cast<uint32_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
             } else if (tokens[idx] == "winc" && has_value(idx)) {
-                info.w_inc = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
+                info.w_inc = static_cast<uint32_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
             } else if (tokens[idx] == "binc" && has_value(idx)) {
-                info.b_inc = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
+                info.b_inc = static_cast<uint32_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
             } else if (tokens[idx] == "depth" && has_value(idx)) {
-                info.depth = static_cast<uint16_t>(std::stoi(tokens[idx + 1]));
+                info.depth = static_cast<uint32_t>(std::stoi(tokens[idx + 1]));
                 idx += 2;
             } else {
                 idx++;
@@ -83,14 +83,14 @@ namespace UCI {
         }
 
         // Calculate TTS using the provided information. min is 100 milliseconds(assumes the time control information has been provided)
-        uint16_t time_remaining;
-        uint16_t inc;
+        uint32_t time_remaining;
+        uint32_t inc;
 
         if (info.board.sideToMove() == chess::Color::WHITE) 
                 { time_remaining = info.w_time; inc = info.w_inc; }
         else    { time_remaining = info.b_time; inc = info.b_inc; }
 
-        info.milliseconds = std::max<uint16_t>(calculate_tts(time_remaining, inc), 100);
+        info.milliseconds = std::max<uint32_t>(calculate_tts(time_remaining, inc), 100);
     }
 
     // UCI Command Implementations
@@ -135,9 +135,9 @@ namespace UCI {
         // Guard Clause: This command cannot have less than 2 tokens
         if (tokens.size() < 2) return;
 
-        std::string  fen;
-        std::uint8_t idx = 1;
-        std::string  position_token = tokens[idx];
+        std::string   fen;
+        std::uint32_t idx = 1;
+        std::string   position_token = tokens[idx];
 
         if (position_token == "startpos") {
             fen = chess::constants::STARTPOS;
@@ -156,7 +156,11 @@ namespace UCI {
 
         // Apply the FEN to the board and clear the move list
         info.moves.clear();
-        info.board.setFen(fen);
+        
+        if (!info.board.setFen(fen)) {
+            std::cout << "[Fyn] Error: Invalid FEN in position command: " << fen << std::endl;
+            return;
+        }
 
         // Parse and apply moves if any
         if (idx < tokens.size() && tokens[idx] == "moves") {
