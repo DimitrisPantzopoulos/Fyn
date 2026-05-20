@@ -12,7 +12,7 @@
 #include <atomic>
 
 namespace Search {
-    struct Limits {
+    namespace Limits {
         static constexpr int MATE_SCORE = 32000;
         static constexpr int INF        = 32767;
         static constexpr int START_PLY  = 0;
@@ -20,6 +20,11 @@ namespace Search {
         static constexpr int SEARCH_CANCELLED  = -INF;
         static constexpr int REPEATED_POSITION = 0;
     };
+
+    namespace Params {
+        static constexpr int RFP_MARGIN = 100;
+    }
+
 
     class Search {
         public:

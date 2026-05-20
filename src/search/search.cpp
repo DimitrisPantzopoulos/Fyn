@@ -100,12 +100,25 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         }
     }
 
+    if (depth <= 0) { return quiescence_search(board, ply, alpha, beta); }
+    
+    bool in_check = board.inCheck();
+    bool is_pv = beta - alpha > 1;
+
+    // Reverse Futility Pruning
+    if (depth <= 3 && !in_check && !is_pv) {
+        int static_eval = Evaluation::evaluation(board);
+        int margin = Params::RFP_MARGIN * depth;
+
+        if (static_eval - margin >= beta) {
+            return static_eval - margin;
+        }
+    }
+
     const chess::Movelist legal_moves = order_moves(board, hash_move, false);
     
     HANDLE_EMPTY_LEGAL_MOVES(board, legal_moves, ply);
 
-    if (depth <= 0) { return quiescence_search(board, ply, alpha, beta); }
- 
     for (int i=0; i<legal_moves.size(); i++) {
         const chess::Move move = legal_moves[i];
         int eval;
@@ -126,7 +139,11 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         HANDLE_CANCEL_SEARCH(can_search);
 
         if (eval  > alpha) { alpha = eval; hash_move = move; }
-        if (alpha >= beta) { return beta;  }
+
+        if (alpha >= beta) { 
+            tt_table.store(hash, TranspositionTable::TTNodeType::LOWERBOUND, depth, beta, move);
+            return beta;
+        }
     }
 
     tt_table.store(hash, TranspositionTable::get_node_type(origin_alpha, alpha, beta), depth, alpha, hash_move);
