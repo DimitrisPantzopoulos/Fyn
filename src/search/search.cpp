@@ -115,6 +115,15 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         }
     }
 
+    // Null Move Pruning
+    if (depth >= 3 && !is_pv && !in_check && beta < Limits::MATE_SCORE - 1000 && board.hasNonPawnMaterial(board.sideToMove())){
+        board.makeNullMove();
+        int null_move_score = -negamax(board, ply + 1, depth - 1 - (Params::NULL_MOVE_R + depth / 6), -beta, -beta+1);
+        board.unmakeNullMove();
+
+        if (null_move_score >= beta) { return beta; }
+    }
+
     const chess::Movelist legal_moves = order_moves(board, hash_move, false);
     
     HANDLE_EMPTY_LEGAL_MOVES(board, legal_moves, ply);

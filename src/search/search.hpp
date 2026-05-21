@@ -23,6 +23,7 @@ namespace Search {
 
     namespace Params {
         static constexpr int RFP_MARGIN = 100;
+        static constexpr int NULL_MOVE_R = 2;
     }
 
 
