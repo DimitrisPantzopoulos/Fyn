@@ -132,17 +132,42 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         const chess::Move move = legal_moves[i];
         int eval;
 
+        bool is_capture = board.isCapture(move);
+
         board.makeMove(move);
+
+        bool gives_check = board.inCheck();
+
         // PVS Search
         if (i == 0) {
             eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
         } else {
-            eval = -negamax(board, ply + 1, depth - 1, -(alpha + 1), -alpha);
+            int reduction = 0;
 
+            if (
+                i     >= 4  &&
+                depth >= 3  &&
+                !is_pv      &&
+                !in_check   &&
+                !is_capture &&
+                !gives_check
+            ) {
+                reduction = Params::LMR_REDUCTION;
+            }
+            
+            eval = -negamax(board, ply + 1, depth - 1 - reduction, -(alpha + 1), -alpha);
+            
+            // LMR: If node looks promising research with a null window
+            if (reduction > 0 && eval > alpha) {
+                eval = -negamax(board, ply + 1, depth - 1, -(alpha + 1), -alpha);
+            }
+
+            // PVS: if it still improves alpha, then do full PVS search
             if (eval > alpha && eval < beta) {
                 eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
             }
         }
+
         board.unmakeMove(move);
         
         HANDLE_CANCEL_SEARCH(can_search);
