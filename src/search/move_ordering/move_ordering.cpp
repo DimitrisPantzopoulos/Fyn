@@ -14,6 +14,7 @@ int Search::Search::score_move(const chess::Board& board, const chess::Move& mov
     if (move == pv_move) {
         return OrderingHeuristics::PV_MOVE;
     }
+    
     if (ply < KillerMoveTable::MAX_KILLER_PLY) {
         if (move == this->km_table.get_primary_killer(ply)) {
             return OrderingHeuristics::PRIMARY_KILLER_MOVE;
@@ -23,14 +24,18 @@ int Search::Search::score_move(const chess::Board& board, const chess::Move& mov
         }
     }
 
-    if (board.at(move.to()) != chess::Piece::NONE) {
+    // LVA-MVV Heuristic
+    if (board.isCapture(move)) {
         int victim   = Evaluation::piece_value(board.at<chess::PieceType>(move.to()));
         int attacker = Evaluation::piece_value(board.at<chess::PieceType>(move.from()));
 
-        return 10 * victim - attacker;
-    }
+        return OrderingHeuristics::CAPTURE_MOVE + 10 * victim - attacker;
+    } else if (move.promotionType() != chess::PieceType::NONE) {
+        return OrderingHeuristics::PROMOTION_MOVE;
+    } 
 
-    return 0;
+    // History Heuristic
+    return this->history_table.get_history(board.sideToMove(), move);
 }
 
 chess::Movelist Search::Search::order_moves(const chess::Board& board, const chess::Move& pv_move, const int ply, bool in_qsearch) {

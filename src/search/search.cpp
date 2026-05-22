@@ -1,4 +1,5 @@
 #include "tables\transposition_table\transposition_table.hpp"
+#include "tables\history_table\history_table.hpp"
 #include "move_ordering\move_ordering.hpp"
 #include "..\evaluation\evaluation.hpp"
 #include "..\uci\uci.hpp"
@@ -9,6 +10,7 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <vector>
 
 #define HANDLE_CANCEL_SEARCH(can_search)                             \
     do {                                                             \
@@ -90,9 +92,10 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
     TranspositionTable::TranspositionEntry tt_entry;
 
     if (tt_table.retrieve(hash, tt_entry)){
+        hash_move = tt_entry.best_move;
+
         if (tt_entry.depth >= depth) {
             int tt_eval = tt_entry.eval;
-            hash_move   = tt_entry.best_move;
             
             if      (tt_entry.type == TranspositionTable::TTNodeType::LOWERBOUND)             { alpha = std::max(alpha, tt_eval); }
             else if (tt_entry.type == TranspositionTable::TTNodeType::UPPERBOUND)             { beta  = std::min(beta, tt_eval);  }
@@ -128,16 +131,20 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
     
     HANDLE_EMPTY_LEGAL_MOVES(board, legal_moves, ply);
 
+    // History Maluses collection
+    std::vector<chess::Move> quiets_searched;
+
     for (int i=0; i<legal_moves.size(); i++) {
         const chess::Move move = legal_moves[i];
         int eval;
 
-        bool is_capture = board.isCapture(move);
+        bool is_capture   = board.isCapture(move);
+        bool is_promotion = move.promotionType() != chess::PieceType::NONE;
 
         board.makeMove(move);
 
         bool gives_check = board.inCheck();
-
+        
         // PVS Search
         if (i == 0) {
             eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
@@ -175,14 +182,27 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         if (eval  > alpha) { alpha = eval; hash_move = move; }
 
         if (alpha >= beta) {
-            // Store killer move
-            if (!is_capture && move.promotionType() == chess::PieceType::NONE) { 
-                km_table.update_killers(move, ply); 
+            if (!is_capture && !is_promotion) {
+                const int bonus = this->history_table.bonus_formula(depth);
+                const chess::Color stm = board.sideToMove();
+
+                history_table.update_history(stm, move, bonus);
+
+                for (const chess::Move& quiet : quiets_searched) {
+                    history_table.update_history(stm, quiet, -bonus);
+                }
+
+                km_table.update_killers(move, ply);
             }
 
             // Store tt table entry
             tt_table.store(hash, TranspositionTable::TTNodeType::LOWERBOUND, depth, beta, move);
             return beta;
+        }
+
+        // Collect quiets for history maluses.
+        if (!is_capture && !is_promotion) {
+            quiets_searched.push_back(move);
         }
     }
 

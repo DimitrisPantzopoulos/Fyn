@@ -9,8 +9,12 @@ struct OrderingLimits {
 
 struct OrderingHeuristics {
     static constexpr int PV_MOVE               = 1'000'000;
-    static constexpr int PRIMARY_KILLER_MOVE   =   900'000;
-    static constexpr int SECONDARY_KILLER_MOVE =   800'000;
+    
+    static constexpr int CAPTURE_MOVE          = 50'000;
+    static constexpr int PROMOTION_MOVE        = 45'000;
+
+    static constexpr int PRIMARY_KILLER_MOVE   = 40'000;
+    static constexpr int SECONDARY_KILLER_MOVE = 39'000;
 };
 
 template <chess::movegen::MoveGenType Type>
