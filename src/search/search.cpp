@@ -221,6 +221,10 @@ void Search::Search::search_position(UCI::Info info) {
                 best_move   = move;
                 depth_searched = depth;
             }
+
+            if (eval > alpha) {
+                alpha = eval;
+            }
         }
 
         if (!can_search) { break; }
