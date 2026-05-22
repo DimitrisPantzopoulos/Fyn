@@ -1,4 +1,4 @@
-#include "transposition_table\transposition_table.hpp"
+#include "tables\transposition_table\transposition_table.hpp"
 #include "move_ordering\move_ordering.hpp"
 #include "..\evaluation\evaluation.hpp"
 #include "..\uci\uci.hpp"
@@ -57,7 +57,7 @@ int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, i
     HANDLE_CANCEL_SEARCH(can_search);
     HANDLE_REPETITION(board);
 
-    const chess::Movelist legal_moves = order_moves(board, chess::Move::NO_MOVE, true);
+    const chess::Movelist legal_moves = order_moves(board, chess::Move::NO_MOVE, ply, true);
 
     int stand_pat = Evaluation::evaluation(board);
 
@@ -124,7 +124,7 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         if (null_move_score >= beta) { return beta; }
     }
 
-    const chess::Movelist legal_moves = order_moves(board, hash_move, false);
+    const chess::Movelist legal_moves = order_moves(board, hash_move, ply, false);
     
     HANDLE_EMPTY_LEGAL_MOVES(board, legal_moves, ply);
 
@@ -174,7 +174,13 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
 
         if (eval  > alpha) { alpha = eval; hash_move = move; }
 
-        if (alpha >= beta) { 
+        if (alpha >= beta) {
+            // Store killer move
+            if (!is_capture && move.promotionType() == chess::PieceType::NONE) { 
+                km_table.update_killers(move, ply); 
+            }
+
+            // Store tt table entry
             tt_table.store(hash, TranspositionTable::TTNodeType::LOWERBOUND, depth, beta, move);
             return beta;
         }
@@ -196,7 +202,7 @@ void Search::Search::search_position(UCI::Info info) {
     nodes_searched = 0;
     
     for (int depth = 1; depth <= info.depth; depth++) {
-        const chess::Movelist legal_moves = order_moves(info.board, best_move, false);
+        const chess::Movelist legal_moves = order_moves(info.board, best_move, Limits::START_PLY, false);
         
         // Reset
         best_eval = -Limits::INF;

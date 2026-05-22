@@ -4,11 +4,13 @@
 #include "include/chess.hpp"
 
 struct OrderingLimits {
-    static const int MAX_MOVES = 256;
+    static constexpr int MAX_MOVES = 256;
 };
 
 struct OrderingHeuristics {
-    static const int PV_MOVE = 1000;
+    static constexpr int PV_MOVE               = 1'000'000;
+    static constexpr int PRIMARY_KILLER_MOVE   =   900'000;
+    static constexpr int SECONDARY_KILLER_MOVE =   800'000;
 };
 
 template <chess::movegen::MoveGenType Type>
@@ -17,7 +19,5 @@ inline chess::Movelist get_legal_moves(const chess::Board& board) {
     chess::movegen::legalmoves<Type>(legal_moves, board);
     return legal_moves;
 }
-
-chess::Movelist order_moves(const chess::Board& board, const chess::Move& pv_move, bool in_qsearch);
 
 #endif

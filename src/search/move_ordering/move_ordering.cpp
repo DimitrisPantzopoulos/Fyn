@@ -1,6 +1,6 @@
 #include "..\evaluation\evaluation.hpp"
 #include "include/chess.hpp"
-#include "move_ordering.hpp"
+#include "../search.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,9 +10,18 @@ struct ScoredMove {
     int score;
 };
 
-int score_move(const chess::Board& board, const chess::Move& move, const chess::Move& pv_move) {
-    if (move == pv_move)
+int Search::Search::score_move(const chess::Board& board, const chess::Move& move, const chess::Move& pv_move, const int ply) {
+    if (move == pv_move) {
         return OrderingHeuristics::PV_MOVE;
+    }
+    if (ply < KillerMoveTable::MAX_KILLER_PLY) {
+        if (move == this->km_table.get_primary_killer(ply)) {
+            return OrderingHeuristics::PRIMARY_KILLER_MOVE;
+        }
+        if (move == this->km_table.get_secondary_killer(ply)) {
+            return OrderingHeuristics::SECONDARY_KILLER_MOVE;
+        }
+    }
 
     if (board.at(move.to()) != chess::Piece::NONE) {
         int victim   = Evaluation::piece_value(board.at<chess::PieceType>(move.to()));
@@ -24,7 +33,7 @@ int score_move(const chess::Board& board, const chess::Move& move, const chess::
     return 0;
 }
 
-chess::Movelist order_moves(const chess::Board& board, const chess::Move& pv_move, bool in_qsearch) {
+chess::Movelist Search::Search::order_moves(const chess::Board& board, const chess::Move& pv_move, const int ply, bool in_qsearch) {
     chess::Movelist moves = in_qsearch
         ? get_legal_moves<chess::movegen::MoveGenType::CAPTURE>(board)
         : get_legal_moves<chess::movegen::MoveGenType::ALL>(board);
@@ -35,7 +44,7 @@ chess::Movelist order_moves(const chess::Board& board, const chess::Move& pv_mov
     for (int i = 0; i < moves.size(); ++i) {
         scored[count++] = ScoredMove{
             moves[i],
-            score_move(board, moves[i], pv_move)
+            score_move(board, moves[i], pv_move, ply)
         };
     }
 
