@@ -35,6 +35,10 @@ namespace Evaluation{
             return {mg * k, eg * k};
         }
 
+        friend constexpr Score operator*(int k, const Score& score) {
+            return score * k;
+        }
+
         constexpr Score& operator*=(int k) {
             mg *= k;
             eg *= k;

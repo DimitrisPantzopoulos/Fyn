@@ -6,8 +6,8 @@
 
 #include "include/chess.hpp"
 #include "search.hpp"
+#include "misc/search_helper.hpp"
 
-#include <chrono>
 #include <thread>
 #include <atomic>
 #include <vector>
@@ -39,20 +39,6 @@
     do {                                                        \
         if (timer_thread.joinable()) { timer_thread.join(); }   \
     } while (0)                                                 \
-
-void timer(int milliseconds, std::atomic<bool>& can_search) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
-    can_search = false;
-}
-
-void print_search_info(int best_eval, int depth, int nodes, chess::Move best_move, bool print_best_move){
-    const std::string best_move_uci = (best_move == chess::Move::NO_MOVE) ? "0000" : chess::uci::moveToUci(best_move);
-
-    std::cout << "info score cp " << best_eval << " depth " << depth << " nodes "  << nodes << "\n";
-
-    if (print_best_move)
-        std::cout << "bestmove "      << best_move_uci << std::endl;
-}
 
 int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, int beta) {
     nodes_searched++;
@@ -119,7 +105,7 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
     }
 
     // Null Move Pruning
-    if (depth >= 3 && !is_pv && !in_check && beta < Limits::MATE_SCORE - 1000 && board.hasNonPawnMaterial(board.sideToMove())){
+    if (depth >= 3 && !is_pv && !in_check && beta < Limits::MATE_SCORE - Params::NMP_OFFSET && board.hasNonPawnMaterial(board.sideToMove())){
         board.makeNullMove();
         int null_move_score = -negamax(board, ply + 1, depth - 1 - (Params::NULL_MOVE_R + depth / 6), -beta, -beta+1);
         board.unmakeNullMove();
@@ -138,43 +124,33 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
         const chess::Move move = legal_moves[i];
         int eval;
 
-        bool is_capture   = board.isCapture(move);
-        bool is_promotion = move.promotionType() != chess::PieceType::NONE;
+        const bool is_capture   = board.isCapture(move);
+        const bool gives_check  = board.givesCheck(move) != chess::CheckType::NO_CHECK;
+        const bool is_promotion = move.promotionType()   != chess::PieceType::NONE;
+
+        const int extension = SearchHelper::calculate_extension(gives_check);
+        const int new_depth = depth - 1 + extension;
 
         board.makeMove(move);
-
-        bool gives_check = board.inCheck();
-        
-        // PVS Search
         if (i == 0) {
-            eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
+            eval = -negamax(board, ply + 1, new_depth, -beta, -alpha);
         } else {
-            int reduction = 0;
+            const int reduction = SearchHelper::calculate_reduction(
+                i, depth, is_pv, in_check, is_capture, gives_check
+            );
 
-            if (
-                i     >= 4  &&
-                depth >= 3  &&
-                !is_pv      &&
-                !in_check   &&
-                !is_capture &&
-                !gives_check
-            ) {
-                reduction = Params::LMR_REDUCTION;
-            }
-            
-            eval = -negamax(board, ply + 1, depth - 1 - reduction, -(alpha + 1), -alpha);
-            
-            // LMR: If node looks promising research with a null window
+            const int reduced_depth = std::max(0, new_depth - reduction);
+
+            eval = -negamax(board, ply + 1, reduced_depth, -(alpha + 1), -alpha);
+
             if (reduction > 0 && eval > alpha) {
-                eval = -negamax(board, ply + 1, depth - 1, -(alpha + 1), -alpha);
+                eval = -negamax(board, ply + 1, new_depth, -(alpha + 1), -alpha);
             }
 
-            // PVS: if it still improves alpha, then do full PVS search
             if (eval > alpha && eval < beta) {
-                eval = -negamax(board, ply + 1, depth - 1, -beta, -alpha);
+                eval = -negamax(board, ply + 1, new_depth, -beta, -alpha);
             }
         }
-
         board.unmakeMove(move);
         
         HANDLE_CANCEL_SEARCH(can_search);
@@ -213,7 +189,7 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
 void Search::Search::search_position(UCI::Info info) {
     // Launch Timer thread
     can_search = true;
-    auto timer_thread = std::thread(timer, info.milliseconds, std::ref(can_search));
+    auto timer_thread = std::thread(SearchHelper::timer, info.milliseconds, std::ref(can_search));
 
     // Search Position
     chess::Move best_move   = chess::Move::NO_MOVE;
@@ -249,9 +225,9 @@ void Search::Search::search_position(UCI::Info info) {
 
         if (!can_search) { break; }
 
-        print_search_info(best_eval, depth, nodes_searched, best_move, false);
+        SearchHelper::print_search_info(best_eval, depth, nodes_searched, best_move, false);
     }
 
     HANDLE_JOIN_TIMER_THREAD(timer_thread);
-    print_search_info(best_eval, depth_searched, nodes_searched, best_move, true);
+    SearchHelper::print_search_info(best_eval, depth_searched, nodes_searched, best_move, true);
 }

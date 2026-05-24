@@ -27,6 +27,7 @@ namespace Search {
         static constexpr int RFP_MARGIN = 100;
         static constexpr int NULL_MOVE_R = 2;
         static constexpr int LMR_REDUCTION = 1;
+        static constexpr int NMP_OFFSET = 1000;
     }
 
     class Search {
