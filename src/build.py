@@ -39,7 +39,7 @@ def get_build_cmd() -> str:
     if include_path is None:
         raise FileNotFoundError("[Fyn] Could not locate chess-library in src/chess-library.")
 
-    return f"g++ {cpp_files_str} -I {include_path} -I src -std=c++20 -O3 -o Fyn"
+    return f"g++ {cpp_files_str} -I {include_path} -I src -std=c++20 -O3 -march=native -o Fyn"
 
 def run_subprocess(cmd : str) -> bool:
     try:

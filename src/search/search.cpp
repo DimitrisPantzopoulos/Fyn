@@ -91,12 +91,12 @@ int Search::Search::negamax(chess::Board& board, int ply, int depth, int alpha, 
 
     if (depth <= 0) { return quiescence_search(board, ply, alpha, beta); }
     
-    bool in_check = board.inCheck();
-    bool is_pv = beta - alpha > 1;
+    const bool in_check = board.inCheck();
+    const bool is_pv = beta - alpha > 1;
 
     // Reverse Futility Pruning
     if (depth <= 3 && !in_check && !is_pv) {
-        int static_eval = Evaluation::evaluation(board);
+        const int static_eval = Evaluation::evaluation(board);
         int margin = Params::RFP_MARGIN * depth;
 
         if (static_eval - margin >= beta) {
