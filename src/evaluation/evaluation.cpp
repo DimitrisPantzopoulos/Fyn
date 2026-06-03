@@ -14,6 +14,7 @@ int Evaluation::evaluation(const chess::Board& board) {
     total  = Evaluation::evaluate_material(board, nullptr);
     total += Evaluation::evaluate_psts(board,     nullptr);
     total += Evaluation::pawn_evaluation(board,   nullptr);
-
+    total += Evaluation::mobility_evaluation(board, nullptr);
+    
     return color * (total.mg * game_phase + total.eg * (Params::MAX_PHASE - game_phase)) / Params::MAX_PHASE;
 }
