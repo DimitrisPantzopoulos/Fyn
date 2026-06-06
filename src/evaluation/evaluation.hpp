@@ -3,7 +3,9 @@
 #ifndef EVALUATION_HPP
 #define EVALUATION_HPP
 
+#include "evaluation_helper.hpp"
 #include "include/chess.hpp"
+
 #include <cstdint>
 
 namespace Evaluation{
@@ -66,17 +68,33 @@ namespace Evaluation{
         int piece_mobility[2][6] = {};
 
         int rook_on_open_file[2] = {};
-        int rook_on_semi_open_file[2] = {};
         int connected_rooks[2]   = {};
         int rook_on_seventh[2]   = {};
+        int rook_on_semi_open_file[2] = {};
 
-        int isolated_pawn[2] = {};
-        int doubled_pawn[2]  = {};
+        int supported_pawn[2]  = {};
+        int backwards_pawn[2]  = {};
+        int phalanx_pawn[2][8] = {};
+
+        int isolated_pawn[2]   = {};
+        int doubled_pawn[2]    = {};
+
+        template<typename Feature>
+        static void trace_scalar(Feature& feature, int white, int black) {
+            feature[WHITE] += white;
+            feature[BLACK] += black;
+        }
+
+        template<typename Feature>
+        static void trace_array(Feature& feature, int side, int index, int value = 1) {
+            feature[side][index] += value;
+        }
     };
 
     namespace Params {
         static constexpr uint8_t NO_PIECE_TYPES = 6;
         static constexpr uint8_t MAX_PHASE      = 24;
+        static constexpr chess::Color EVAL_COLORS[2] = {chess::Color::WHITE, chess::Color::BLACK};
 
         static constexpr chess::PieceType piece_types[NO_PIECE_TYPES] = {
             chess::PieceType::PAWN,
@@ -97,90 +115,44 @@ namespace Evaluation{
         };
 
         static constexpr Score piece_type_value[6] = {
-            {135, 208}, {549, 1011}, {624, 987}, {698, 1376}, 
-            {1912, 2735}, {0, 0}
+            {126, 202}, {563, 1014}, {636, 989}, {711, 1377}, 
+            {1945, 2741}, {0, 0}
         };
 
         static constexpr Score piece_type_pst[6][64] = {
-            { {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {21, 161}, {-7, 142}, {-1, 157}, {17, 144}, {9, 175}, {101, 160}, {111, 117}, {52, 83}, {24, 147}, {3, 136}, {19, 130}, {27, 125}, {57, 145}, {63, 141}, {86, 114}, {55, 106}, {24, 169}, {12, 162}, {32, 120}, {46, 112}, {64, 113}, {68, 126}, {56, 129}, {36, 123}, {29, 219}, {32, 197}, {40, 162}, {82, 99}, {104, 114}, {125, 125}, {64, 162}, {31, 161}, {32, 306}, {68, 266}, {117, 191}, {111, 96}, {140, 84}, {268, 136}, {119, 187}, {68, 205}, {202, 346}, {180, 328}, {183, 264}, {237, 157}, {203, 146}, {124, 196}, {-211, 328}, {-172, 341}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0} },
-            { {-201, -48}, {27, -28}, {-39, 77}, {26, 101}, {42, 90}, {49, 66}, {36, 4}, {-156, -9}, {-31, 61}, {4, 112}, {31, 94}, {72, 123}, {59, 139}, {59, 85}, {23, 109}, {46, 66}, {14, 15}, {52, 122}, {62, 135}, {85, 200}, {104, 188}, {81, 134}, {75, 128}, {47, 22}, {47, 102}, {57, 190}, {93, 229}, {96, 254}, {112, 251}, {98, 250}, {145, 200}, {85, 140}, {71, 114}, {93, 194}, {130, 233}, {157, 274}, {122, 281}, {173, 256}, {121, 237}, {150, 149}, {-24, 103}, {81, 170}, {146, 214}, {175, 217}, {255, 191}, {292, 219}, {175, 183}, {173, 90}, {22, 48}, {11, 128}, {112, 141}, {158, 222}, {173, 206}, {249, 93}, {0, 134}, {105, 53}, {-347, -91}, {-163, 110}, {-239, 218}, {25, 150}, {173, 136}, {-165, 225}, {-13, 112}, {-258, -133} },
-            { {88, 128}, {98, 162}, {49, 141}, {19, 161}, {2, 179}, {44, 153}, {60, 155}, {72, 146}, {83, 130}, {89, 143}, {99, 155}, {60, 179}, {68, 169}, {80, 134}, {121, 151}, {91, 64}, {54, 161}, {82, 185}, {75, 203}, {87, 207}, {77, 214}, {84, 181}, {74, 169}, {92, 170}, {43, 160}, {69, 192}, {79, 213}, {113, 211}, {132, 191}, {56, 214}, {71, 191}, {78, 164}, {11, 197}, {96, 210}, {86, 199}, {176, 192}, {119, 221}, {133, 196}, {93, 236}, {66, 208}, {36, 192}, {59, 227}, {134, 185}, {105, 202}, {152, 195}, {175, 225}, {158, 217}, {102, 213}, {-64, 211}, {28, 212}, {26, 213}, {1, 231}, {32, 224}, {84, 200}, {11, 205}, {66, 172}, {-8, 221}, {-93, 257}, {-232, 263}, {-156, 273}, {-130, 241}, {-149, 247}, {122, 191}, {-6, 227} },
-            { {117, 585}, {121, 598}, {132, 605}, {153, 582}, {149, 588}, {161, 609}, {194, 576}, {142, 538}, {23, 602}, {88, 589}, {91, 609}, {98, 602}, {104, 599}, {154, 576}, {172, 572}, {32, 616}, {70, 602}, {81, 638}, {66, 640}, {91, 627}, {90, 635}, {113, 632}, {200, 610}, {129, 590}, {78, 656}, {68, 695}, {74, 701}, {99, 683}, {96, 682}, {115, 689}, {177, 671}, {150, 646}, {107, 693}, {138, 699}, {155, 707}, {212, 689}, {182, 698}, {213, 685}, {260, 661}, {206, 673}, {110, 714}, {200, 692}, {196, 713}, {249, 685}, {298, 666}, {379, 674}, {458, 611}, {262, 675}, {3, 294}, {-13, 314}, {54, 301}, {111, 300}, {95, 309}, {205, 235}, {102, 265}, {159, 244}, {242, 701}, {244, 712}, {193, 728}, {223, 713}, {247, 720}, {359, 711}, {385, 703}, {388, 698} },
-            { {406, 636}, {409, 619}, {428, 587}, {436, 671}, {427, 609}, {363, 649}, {423, 538}, {399, 581}, {382, 663}, {401, 677}, {422, 638}, {413, 693}, {419, 674}, {448, 569}, {465, 538}, {448, 585}, {377, 697}, {404, 736}, {402, 780}, {391, 761}, {394, 767}, {400, 817}, {432, 761}, {430, 738}, {383, 722}, {380, 800}, {383, 804}, {365, 910}, {365, 916}, {403, 926}, {416, 890}, {431, 933}, {367, 749}, {366, 836}, {350, 847}, {346, 949}, {351, 1041}, {398, 1081}, {441, 1061}, {448, 1020}, {338, 797}, {347, 830}, {328, 901}, {367, 939}, {398, 1044}, {541, 1078}, {563, 1059}, {484, 1091}, {315, 872}, {239, 954}, {323, 937}, {274, 1063}, {333, 1120}, {488, 1064}, {328, 1155}, {475, 1030}, {329, 924}, {359, 936}, {369, 986}, {443, 952}, {460, 995}, {646, 943}, {647, 941}, {612, 924} },
-            { {-54, -129}, {60, -84}, {-20, -50}, {-241, -46}, {-83, -125}, {-225, -13}, {26, -94}, {40, -225}, {8, -26}, {-52, 0}, {-110, 34}, {-249, 62}, {-175, 44}, {-182, 49}, {-28, -17}, {16, -81}, {-96, -24}, {-94, 35}, {-92, 60}, {-146, 101}, {-113, 90}, {-122, 67}, {-51, 12}, {-108, -18}, {-16, -50}, {25, 46}, {80, 83}, {-92, 134}, {-29, 117}, {-32, 93}, {-6, 53}, {-183, 0}, {-59, 30}, {141, 74}, {101, 110}, {31, 117}, {-6, 124}, {101, 108}, {24, 101}, {-176, 28}, {-22, 28}, {176, 103}, {272, 78}, {139, 74}, {228, 51}, {287, 100}, {176, 122}, {-104, 22}, {30, -103}, {93, 77}, {305, 20}, {180, 15}, {107, 36}, {176, 54}, {67, 116}, {-20, -82}, {86, -432}, {138, -162}, {150, -120}, {93, -60}, {89, -97}, {94, -71}, {114, -60}, {-17, -377} }
+            { {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {18, 154}, {-2, 142}, {-7, 152}, {16, 138}, {6, 174}, {99, 154}, {114, 120}, {58, 75}, {8, 131}, {-21, 122}, {-7, 117}, {-1, 114}, {23, 131}, {30, 125}, {60, 96}, {34, 88}, {20, 154}, {-1, 146}, {16, 101}, {22, 95}, {49, 93}, {52, 105}, {50, 108}, {26, 108}, {34, 205}, {29, 179}, {31, 145}, {76, 80}, {101, 95}, {119, 101}, {67, 142}, {39, 147}, {38, 303}, {76, 263}, {126, 187}, {124, 92}, {158, 77}, {277, 128}, {130, 181}, {78, 204}, {200, 342}, {189, 323}, {192, 258}, {243, 154}, {214, 144}, {132, 192}, {-200, 321}, {-176, 341}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0} },
+            { {-203, -48}, {23, -24}, {-39, 81}, {25, 106}, {43, 94}, {49, 72}, {34, 9}, {-161, -6}, {-36, 65}, {4, 114}, {34, 99}, {72, 129}, {60, 145}, {56, 90}, {28, 110}, {44, 70}, {13, 19}, {55, 125}, {67, 141}, {88, 205}, {106, 194}, {85, 143}, {80, 133}, {46, 27}, {47, 105}, {57, 194}, {98, 236}, {101, 259}, {116, 256}, {102, 257}, {148, 204}, {85, 143}, {73, 117}, {97, 198}, {138, 238}, {169, 278}, {133, 286}, {181, 262}, {126, 243}, {157, 151}, {-26, 107}, {90, 173}, {156, 219}, {185, 221}, {268, 196}, {302, 224}, {182, 189}, {175, 93}, {22, 50}, {12, 132}, {116, 145}, {167, 226}, {179, 210}, {255, 97}, {2, 138}, {103, 56}, {-356, -88}, {-164, 115}, {-237, 221}, {33, 152}, {173, 140}, {-165, 231}, {-7, 116}, {-261, -136} },
+            { {90, 130}, {97, 165}, {49, 146}, {23, 162}, {9, 180}, {47, 156}, {60, 157}, {77, 147}, {82, 132}, {91, 144}, {100, 158}, {62, 182}, {70, 172}, {82, 137}, {127, 151}, {95, 65}, {53, 162}, {85, 187}, {77, 205}, {88, 210}, {80, 216}, {88, 183}, {79, 171}, {92, 169}, {43, 163}, {71, 196}, {82, 216}, {116, 214}, {135, 194}, {62, 218}, {74, 194}, {83, 167}, {14, 201}, {99, 213}, {89, 203}, {183, 195}, {126, 224}, {135, 201}, {99, 240}, {69, 211}, {37, 194}, {63, 232}, {141, 188}, {112, 206}, {159, 199}, {182, 229}, {158, 224}, {107, 217}, {-61, 216}, {36, 214}, {30, 216}, {2, 235}, {37, 228}, {88, 205}, {14, 210}, {66, 177}, {-8, 224}, {-89, 260}, {-233, 267}, {-155, 277}, {-133, 246}, {-151, 252}, {127, 194}, {-4, 231} },
+            { {122, 590}, {125, 602}, {138, 609}, {158, 587}, {155, 593}, {165, 614}, {199, 580}, {146, 543}, {27, 607}, {93, 593}, {97, 612}, {103, 605}, {110, 601}, {158, 580},{177, 574}, {39, 618}, {75, 609}, {87, 645}, {70, 647}, {95, 634}, {95, 641}, {121, 637}, {207, 615}, {135, 595}, {82, 662}, {73, 701}, {81, 706}, {103, 690}, {102, 687},{122, 695}, {183, 677}, {154, 652}, {111, 699}, {144, 706}, {162, 713}, {219, 694}, {187, 704}, {219, 693}, {267, 669}, {212, 680}, {114, 720}, {205, 698}, {201, 719}, {256, 690}, {303, 672}, {384, 680}, {460, 617}, {270, 680}, {4, 297}, {-12, 317}, {55, 303}, {114, 302}, {97, 311}, {206, 237}, {101, 267}, {158, 246}, {249, 705}, {249, 717}, {197, 733}, {229, 718}, {253, 725}, {365, 716}, {386, 708}, {392, 702} },
+            { {413, 640}, {414, 624}, {432, 596}, {440, 678}, {433, 615}, {368, 654}, {429, 543}, {403, 586}, {386, 669}, {407, 681}, {429, 641}, {418, 701}, {423, 681}, {452, 578}, {469, 546}, {452, 594}, {382, 702}, {408, 742}, {407, 786}, {397, 768}, {399, 775}, {404, 827}, {439, 768}, {432, 745}, {387, 728}, {386, 807}, {390, 811}, {371, 918},{370, 925}, {412, 935}, {423, 899}, {435, 941}, {372, 756}, {373, 843}, {359, 853}, {354, 958}, {358, 1051}, {404, 1093}, {449, 1072}, {455, 1028}, {343, 801}, {354, 835}, {336, 908}, {376, 945}, {409, 1050}, {553, 1087}, {566, 1075}, {492, 1096}, {319, 876}, {242, 964}, {329, 942}, {282, 1067}, {341, 1125}, {497, 1071}, {332, 1162}, {478,1034}, {335, 932}, {367, 941}, {379, 992}, {451, 959}, {468, 1003}, {654, 948}, {650, 951}, {619, 929} },
+            { {-54, -130}, {61, -84}, {-21, -47}, {-244, -44}, {-85, -123}, {-226, -13}, {28, -95}, {40, -228}, {11, -28}, {-53, -1}, {-112, 34}, {-249, 63}, {-174, 44}, {-179, 48}, {-24, -19}, {25, -84}, {-100, -24}, {-93, 33}, {-89, 58}, {-143, 100}, {-114, 89}, {-123, 67}, {-64, 15}, {-110, -18}, {-15, -52}, {31, 43}, {87, 80}, {-90, 132}, {-25, 115}, {-26, 92}, {-8, 54}, {-184, -1}, {-60, 28}, {144, 72}, {105, 108}, {35, 115}, {1, 121}, {111, 106}, {30, 100}, {-175, 27}, {-24, 28}, {178, 102}, {271, 77}, {137, 73}, {230, 50}, {285, 99}, {175, 121}, {-106, 21}, {23, -101}, {89, 76}, {298, 22}, {180, 15}, {104, 38}, {178, 53}, {66, 116}, {-25, -83}, {85, -430}, {132, -156}, {143, -122}, {92, -60}, {86, -95}, {94, -69}, {109, -57}, {-24, -370} }
         };
 
         static constexpr Score past_pawn[8] = {
-            {0, 0}, {-22, 40}, {-36, 52}, {-23, 114}, 
-            {43, 164}, {78, 324}, {203, 365}, {0, 0}
+            {0, 0}, {-20, 40}, {-24, 60}, {-15, 119}, 
+            {48, 164}, {77, 312}, {213, 359}, {0, 0}
         };
-        
+
         static constexpr Score piece_mobility[6] = {
-            {0, 0}, {10, 9}, {10, 19}, {7, 10}, {5, 12}, {0, 0}
-        
+            {0, 0}, {8, 8}, {10, 19}, {7, 10}, {4, 12}, {0, 0}
         };
         
-        static constexpr Score rook_on_open_file = {87, 9};
-        static constexpr Score rook_on_semi_open_file = {38, 29};
+        static constexpr Score rook_on_open_file = {87, 8};
+        static constexpr Score rook_on_semi_open_file = {38, 26};
         static constexpr Score connected_rooks = {-2, 91};
-        static constexpr Score rook_on_seventh = {148, 426};
-        static constexpr Score isolated_pawn = {-27, -41};
-        static constexpr Score doubled_pawn = {-35, -52};
+        static constexpr Score rook_on_seventh = {150, 429};
+        static constexpr Score isolated_pawn = {-12, -24};
+        static constexpr Score doubled_pawn = {-24, -54};
+        static constexpr Score supported_pawn = {40, 26};
+        static constexpr Score backwards_pawn = {-1, -12};
+        static constexpr Score phalanx_pawn[8] = {
+            {0, 0}, {7, -2}, {19, 14}, {25, 39}, 
+            {40, 111}, {89, 204}, {47, 461}, {0, 0}
+        };
     };
-
-    namespace Bitboard {
-        static constexpr chess::Bitboard NOT_H_FILE = chess::Bitboard(0x7f7f7f7f7f7f7f7fULL);
-        static constexpr chess::Bitboard NOT_A_FILE = chess::Bitboard(0xfefefefefefefefeULL);
-        
-        inline chess::Bitboard north_fill(chess::Bitboard bb) {
-            bb |= (bb << 8);
-            bb |= (bb << 16);
-            bb |= (bb << 32);
-
-            return bb;
-        }
-
-        inline chess::Bitboard south_fill(chess::Bitboard bb) {
-            bb |= (bb >> 8);
-            bb |= (bb >> 16);
-            bb |= (bb >> 32);
-
-            return bb;
-        }
-    }
         
     inline constexpr int piece_value(const chess::PieceType type) {
         return Params::piece_type_value[static_cast<int>(type.internal())].mg;
-    }
-
-    template <chess::Color::underlying c>
-    [[nodiscard]] inline chess::Bitboard get_all_pawn_attacks(const chess::Bitboard pawns) {
-        return chess::attacks::pawnLeftAttacks<c>(pawns) | chess::attacks::pawnRightAttacks<c>(pawns);
-    }
-
-    [[nodiscard]] inline chess::Bitboard get_piece_type_attack(const chess::PieceType type, const int sq, const chess::Bitboard occ) {
-        switch (type.internal()) {
-        case chess::PieceType::KNIGHT:
-            return chess::attacks::knight(sq);
-        case chess::PieceType::BISHOP:
-            return chess::attacks::bishop(sq, occ);
-        case chess::PieceType::ROOK:
-            return chess::attacks::rook(sq, occ);
-        case chess::PieceType::QUEEN:
-            return chess::attacks::queen(sq, occ);
-        case chess::PieceType::KING:
-            return chess::attacks::king(sq);
-        default:
-            return chess::Bitboard(0ULL);
-        }
-    }
-
-    [[nodiscard]] inline chess::Bitboard get_squares_as_files(const chess::Bitboard bb) {
-        return Bitboard::north_fill(bb) | Bitboard::south_fill(bb);
-    }
-
-    [[nodiscard]] inline chess::Bitboard get_square_as_file(const int sq) {
-        return get_squares_as_files(chess::Bitboard(1ULL << sq));
     }
 
     [[nodiscard]] inline uint8_t calculate_game_phase(const chess::Board& board) {
@@ -264,55 +236,69 @@ namespace Evaluation{
         const chess::Bitboard white_pawns = board.pieces(chess::PieceType::PAWN, chess::Color::WHITE);
         const chess::Bitboard black_pawns = board.pieces(chess::PieceType::PAWN, chess::Color::BLACK);
 
-        const chess::Bitboard white_pawns_north_fill = Bitboard::north_fill(white_pawns);
-        const chess::Bitboard black_pawns_south_fill = Bitboard::south_fill(black_pawns);
-
-        const chess::Bitboard white_adjacent = ((white_pawns_north_fill & Bitboard::NOT_H_FILE) << 9) | ((white_pawns_north_fill & Bitboard::NOT_A_FILE) << 7);
-        const chess::Bitboard black_adjacent = ((black_pawns_south_fill & Bitboard::NOT_A_FILE) >> 9) | ((black_pawns_south_fill & Bitboard::NOT_H_FILE) >> 7);
+        const EvaluationHelper::PawnFeatures white = EvaluationHelper::get_pawn_features<chess::Color::WHITE>(white_pawns, black_pawns);
+        const EvaluationHelper::PawnFeatures black = EvaluationHelper::get_pawn_features<chess::Color::BLACK>(black_pawns, white_pawns);
 
         Score total = {0, 0};
 
-        chess::Bitboard white_passed = (~(black_pawns_south_fill | black_adjacent) & white_pawns);
-        chess::Bitboard black_passed = (~(white_pawns_north_fill | white_adjacent) & black_pawns);
+        chess::Bitboard white_passed = white.passed;
+        while (white_passed) {
+            const int sq = white_passed.pop();
+            const int rank = sq / 8;
 
-        while (white_passed) { 
-            const int past_square = white_passed.pop();
-            const int rank = past_square / 8;
-
-            // Past pawn ranks
-            total += Params::past_pawn[rank]; 
+            total += Params::past_pawn[rank];
 
             if (trace) {
-                trace->passed_pawn[EvalTrace::WHITE][rank] += 1;
+                EvalTrace::trace_array(trace->passed_pawn, EvalTrace::WHITE, rank);
             }
         }
 
+        chess::Bitboard black_passed = black.passed;
         while (black_passed) {
-            const int past_square = black_passed.pop();
-            const int rank = 7 - (past_square / 8);
+            const int sq = black_passed.pop();
+            const int rank = 7 - (sq / 8);
 
             total -= Params::past_pawn[rank];
 
             if (trace) {
-                trace->passed_pawn[EvalTrace::BLACK][rank] += 1;
+                EvalTrace::trace_array(trace->passed_pawn, EvalTrace::BLACK, rank);
             }
         }
 
-        // Isolated pawns and Doubled Pawns
-        const int white_isolated_pawns = (~Bitboard::south_fill(white_adjacent) & white_pawns).count();
-        const int black_isolated_pawns = (~Bitboard::north_fill(black_adjacent) & black_pawns).count();
+        chess::Bitboard white_phalanx = white.phalanx;
+        while (white_phalanx) {
+            const int sq = white_phalanx.pop();
+            const int rank = sq / 8;
 
-        const int white_doubled_pawns = ((white_pawns_north_fill << 8) & white_pawns).count();
-        const int black_doubled_pawns = ((black_pawns_south_fill >> 8) & black_pawns).count();
+            total += Params::phalanx_pawn[rank];
 
-        total += Params::isolated_pawn * (white_isolated_pawns - black_isolated_pawns);
-        total += Params::doubled_pawn  * (white_doubled_pawns  - black_doubled_pawns);
+            if (trace) {
+                EvalTrace::trace_array(trace->phalanx_pawn, EvalTrace::WHITE, rank);
+            }
+        }
+
+        chess::Bitboard black_phalanx = black.phalanx;
+        while (black_phalanx) {
+            const int sq = black_phalanx.pop();
+            const int rank = 7 - (sq / 8);
+
+            total -= Params::phalanx_pawn[rank];
+
+            if (trace) {
+                EvalTrace::trace_array(trace->phalanx_pawn, EvalTrace::BLACK, rank);
+            }
+        }
+        
+        total += Params::isolated_pawn  * (white.isolated  - black.isolated);
+        total += Params::doubled_pawn   * (white.doubled   - black.doubled);
+        total += Params::backwards_pawn * (white.backwards - black.backwards);
+        total += Params::supported_pawn * (white.supported - black.supported);
 
         if (trace) {
-            trace->isolated_pawn[EvalTrace::WHITE] += white_isolated_pawns;
-            trace->isolated_pawn[EvalTrace::BLACK] += black_isolated_pawns;
-            trace->doubled_pawn[EvalTrace::WHITE]  += white_doubled_pawns;
-            trace->doubled_pawn[EvalTrace::BLACK]  += black_doubled_pawns;
+            EvalTrace::trace_scalar(trace->isolated_pawn,  white.isolated,  black.isolated);
+            EvalTrace::trace_scalar(trace->doubled_pawn,   white.doubled,   black.doubled);
+            EvalTrace::trace_scalar(trace->backwards_pawn, white.backwards, black.backwards);
+            EvalTrace::trace_scalar(trace->supported_pawn, white.supported, black.supported);
         }
 
         return total;
@@ -324,8 +310,8 @@ namespace Evaluation{
         const chess::Bitboard white_pawns = board.pieces(chess::PieceType::PAWN, chess::Color::WHITE);
         const chess::Bitboard black_pawns = board.pieces(chess::PieceType::PAWN, chess::Color::BLACK);
 
-        const chess::Bitboard white_pawn_attacks = get_all_pawn_attacks<chess::Color::WHITE>(white_pawns);
-        const chess::Bitboard black_pawn_attacks = get_all_pawn_attacks<chess::Color::BLACK>(black_pawns);
+        const chess::Bitboard white_pawn_attacks = EvaluationHelper::get_all_pawn_attacks<chess::Color::WHITE>(white_pawns);
+        const chess::Bitboard black_pawn_attacks = EvaluationHelper::get_all_pawn_attacks<chess::Color::BLACK>(black_pawns);
 
         const chess::Bitboard white_occ = board.us(chess::Color::WHITE);
         const chess::Bitboard black_occ = board.us(chess::Color::BLACK);
@@ -340,7 +326,7 @@ namespace Evaluation{
 
             while (white_bb) {
                 const int sq = white_bb.pop();
-                const int mobility = (get_piece_type_attack(type, sq, occ) & ~(black_pawn_attacks | white_occ)).count();
+                const int mobility = (EvaluationHelper::get_piece_type_attack(type, sq, occ) & ~(black_pawn_attacks | white_occ)).count();
 
                 total += Params::piece_mobility[type_idx] * mobility;
 
@@ -351,7 +337,7 @@ namespace Evaluation{
 
             while (black_bb) {
                 const int sq = black_bb.pop();
-                const int mobility = (get_piece_type_attack(type, sq, occ) & ~(white_pawn_attacks | black_occ)).count();
+                const int mobility = (EvaluationHelper::get_piece_type_attack(type, sq, occ) & ~(white_pawn_attacks | black_occ)).count();
 
                 total -= Params::piece_mobility[type_idx] * mobility;
 
@@ -374,8 +360,8 @@ namespace Evaluation{
 
         const chess::Bitboard occ = board.occ();
 
-        const chess::Bitboard white_pawn_files = get_squares_as_files(white_pawns);
-        const chess::Bitboard black_pawn_files = get_squares_as_files(black_pawns);
+        const chess::Bitboard white_pawn_files = EvaluationHelper::get_squares_as_files(white_pawns);
+        const chess::Bitboard black_pawn_files = EvaluationHelper::get_squares_as_files(black_pawns);
 
         const chess::Bitboard all_pawn_files = white_pawn_files | black_pawn_files;
 
@@ -407,17 +393,10 @@ namespace Evaluation{
         total += Params::connected_rooks   * (white_connected_rooks - black_connected_rooks);
 
         if (trace){
-            trace->rook_on_open_file[EvalTrace::WHITE] += white_open_file_rooks;
-            trace->rook_on_open_file[EvalTrace::BLACK] += black_open_file_rooks;
-
-            trace->rook_on_semi_open_file[EvalTrace::WHITE] += white_semi_open_file_rooks;
-            trace->rook_on_semi_open_file[EvalTrace::BLACK] += black_semi_open_file_rooks;
-
-            trace->rook_on_seventh[EvalTrace::WHITE] += white_7th_file_rooks;
-            trace->rook_on_seventh[EvalTrace::BLACK] += black_7th_file_rooks;
-
-            trace->connected_rooks[EvalTrace::WHITE] += white_connected_rooks;
-            trace->connected_rooks[EvalTrace::BLACK] += black_connected_rooks;
+            EvalTrace::trace_scalar(trace->rook_on_open_file, white_open_file_rooks, black_open_file_rooks);
+            EvalTrace::trace_scalar(trace->rook_on_semi_open_file, white_semi_open_file_rooks, black_semi_open_file_rooks);
+            EvalTrace::trace_scalar(trace->rook_on_seventh, white_7th_file_rooks, black_7th_file_rooks);
+            EvalTrace::trace_scalar(trace->connected_rooks, white_connected_rooks, black_connected_rooks);
         }
 
         return total;
