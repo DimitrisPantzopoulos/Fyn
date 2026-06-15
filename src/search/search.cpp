@@ -1,8 +1,8 @@
-#include "tables\transposition_table\transposition_table.hpp"
-#include "tables\history_table\history_table.hpp"
-#include "move_ordering\move_ordering.hpp"
-#include "..\evaluation\evaluation.hpp"
-#include "..\uci\uci.hpp"
+#include "tables/transposition_table/transposition_table.hpp"
+#include "tables/history_table/history_table.hpp"
+#include "move_ordering/move_ordering.hpp"
+#include "../evaluation/evaluation.hpp"
+#include "../uci/uci.hpp"
 
 #include "include/chess.hpp"
 #include "search.hpp"

@@ -1,13 +1,13 @@
 #ifndef SEARCH_HPP
 #define SEARCH_HPP
 
-#include "tables\transposition_table\transposition_table.hpp"
-#include "tables\killer_move_table/killer_move_table.hpp"
-#include "tables\history_table\history_table.hpp"
-#include "move_ordering\move_ordering.hpp"
-#include "..\evaluation\evaluation.hpp"
+#include "tables/transposition_table/transposition_table.hpp"
+#include "tables/killer_move_table/killer_move_table.hpp"
+#include "tables/history_table/history_table.hpp"
+#include "move_ordering/move_ordering.hpp"
+#include "../evaluation/evaluation.hpp"
 #include "include/chess.hpp"
-#include "..\uci\uci.hpp"
+#include "../uci/uci.hpp"
 
 #include <limits>
 #include <array>
