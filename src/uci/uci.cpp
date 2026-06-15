@@ -1,5 +1,5 @@
 #include "uci.hpp"
-#include "..\search/search.hpp"
+#include "../search/search.hpp"
 
 #include <algorithm>
 #include <iostream>
