@@ -1,6 +1,7 @@
-#include "..\evaluation\evaluation.hpp"
-#include "include/chess.hpp"
+#include "../evaluation/evaluation.hpp"
 #include "../search.hpp"
+
+#include "include/chess.hpp"
 
 #include <algorithm>
 #include <array>
