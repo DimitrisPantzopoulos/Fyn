@@ -32,14 +32,17 @@ def get_chess_library_include() -> str | None:
 
     return None
 
-def get_build_cmd() -> str:
+def get_build_cmd(server: bool = False) -> str:
     cpp_files = get_cpp_files()
     cpp_files_str = " ".join(cpp_files)
     include_path = get_chess_library_include()
+
     if include_path is None:
         raise FileNotFoundError("[Fyn] Could not locate chess-library in src/chess-library.")
 
-    return f"g++ {cpp_files_str} -I {include_path} -I src -std=c++20 -O3 -march=native -pthread -o Fyn"
+    march_flag = "" if server else "-march=native"
+
+    return f"g++ {cpp_files_str} -I {include_path} -I src -std=c++20 -O3 {march_flag} -pthread -o Fyn"
 
 def run_subprocess(cmd : str) -> bool:
     try:
@@ -63,9 +66,9 @@ def check_dependencies() -> bool:
 def check_lib_in_dir() -> bool:
     return get_chess_library_include() is not None
 
-def build_fyn() -> None:
+def build_fyn(server : bool = False) -> None:
     print("🛠️  [Fyn] Chess library found. Compiling Fyn...")
-    build_cmd = get_build_cmd()
+    build_cmd = get_build_cmd(server=server)
     if run_subprocess(build_cmd):
         print("✅ [Fyn] Fyn Build complete.")
         print("🎮 [Fyn] To use Fyn type in terminal: ./Fyn")
@@ -85,15 +88,20 @@ def download_chess_lib() -> None:
 
 # Build script
 if __name__ == "__main__":
+    is_server_build : bool = "--server" in sys.argv
+
     os.chdir(REPO_ROOT)
 
     if not check_dependencies():
         sys.exit(1)
 
     if check_lib_in_dir():
-        build_fyn()
-    elif ask_to_download_chess_lib():
-        download_chess_lib()
-        build_fyn()
+        build_fyn(server=is_server_build)
+    else:
+        should_download : bool = True if is_server_build else ask_to_download_chess_lib()
+        
+        if should_download:
+            download_chess_lib()
+            build_fyn(server=is_server_build)
 
     
