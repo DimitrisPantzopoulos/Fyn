@@ -5,6 +5,17 @@
 #include <cstdint>
 
 namespace UCI {
+    enum Command : uint8_t {
+        GO,
+        UCI,
+        STOP,
+        QUIT,
+        ISREADY,
+        POSITION,
+        UCINEWGAME,
+        NONE,
+    };
+    
     struct Info {
         // Board position info
         chess::Board    board;
@@ -20,17 +31,6 @@ namespace UCI {
         // Search Info
         uint32_t milliseconds = 0;
         uint32_t depth = 256;
-    };
-
-    enum Command : uint8_t {
-        GO,
-        UCI,
-        STOP,
-        QUIT,
-        ISREADY,
-        POSITION,
-        UCINEWGAME,
-        NONE,
     };
 
     void uci_protocol();

@@ -1,4 +1,5 @@
 #include "../evaluation/evaluation.hpp"
+#include "../misc/search_helper.hpp"
 #include "../search.hpp"
 
 #include "include/chess.hpp"
@@ -11,7 +12,13 @@ struct ScoredMove {
     int score;
 };
 
-int Search::Search::score_move(const chess::Board& board, const chess::Move& move, const chess::Move& pv_move, const int ply) {
+int Search::Search::score_move(
+        const chess::Board& board, 
+        const chess::Move& move, 
+        const chess::Move& pv_move, 
+        const int ply
+    ) {
+
     if (move == pv_move) {
         return OrderingHeuristics::PV_MOVE;
     }
@@ -27,11 +34,11 @@ int Search::Search::score_move(const chess::Board& board, const chess::Move& mov
 
     // LVA-MVV Heuristic
     if (board.isCapture(move)) {
-        int victim   = Evaluation::piece_value(board.at<chess::PieceType>(move.to()));
-        int attacker = Evaluation::piece_value(board.at<chess::PieceType>(move.from()));
-
+        const int victim   = Evaluation::piece_value(board.getCapturing<chess::PieceType>(move));
+        const int attacker = Evaluation::piece_value(board.at<chess::PieceType>(move.from()));
         return OrderingHeuristics::CAPTURE_MOVE + 10 * victim - attacker;
-    } else if (move.promotionType() != chess::PieceType::NONE) {
+
+    } else if (move.typeOf() == chess::Move::PROMOTION) {
         return OrderingHeuristics::PROMOTION_MOVE;
     } 
 
@@ -39,7 +46,12 @@ int Search::Search::score_move(const chess::Board& board, const chess::Move& mov
     return this->history_table.get_history(board.sideToMove(), move);
 }
 
-chess::Movelist Search::Search::order_moves(const chess::Board& board, const chess::Move& pv_move, const int ply, bool in_qsearch) {
+chess::Movelist Search::Search::order_moves(
+        const chess::Board& board, 
+        const chess::Move& pv_move, 
+        const int ply, 
+        bool in_qsearch
+    ) {
     chess::Movelist moves = in_qsearch
         ? get_legal_moves<chess::movegen::MoveGenType::CAPTURE>(board)
         : get_legal_moves<chess::movegen::MoveGenType::ALL>(board);

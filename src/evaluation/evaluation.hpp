@@ -123,17 +123,17 @@ namespace Evaluation{
             return bb;
         }
     }
-        
-    inline constexpr int piece_value(const chess::PieceType type) {
-        return Params::piece_type_value[static_cast<int>(type.internal())].mg;
-    }
 
-    [[nodiscard]] inline uint8_t calculate_game_phase(const chess::Board& board) {
-        uint8_t game_phase = 0;
+    [[nodiscard]] inline int piece_value(const chess::PieceType type) {
+        return Evaluation::Params::piece_type_value[static_cast<int>(type.internal())].mg;
+    }
+    
+    [[nodiscard]] inline int calculate_game_phase(const chess::Board& board) {
+        int game_phase = 0;
 
         for (size_t type_idx = 0; type_idx < Params::NO_PIECE_TYPES; type_idx++) {
             const chess::PieceType type = Params::piece_types[type_idx];
-            const uint8_t phase_value   = Params::piece_type_phase[type_idx];
+            const int phase_value       = Params::piece_type_phase[type_idx];
 
             chess::Bitboard white_bb = board.pieces(type, chess::Color::WHITE);
             chess::Bitboard black_bb = board.pieces(type, chess::Color::BLACK);
@@ -146,6 +146,10 @@ namespace Evaluation{
 
         return game_phase;
     }
+
+    [[nodiscard]] inline int calculate_tapered_eval(const Score total, const int game_phase) {
+        return (total.mg * game_phase + total.eg * (Params::MAX_PHASE - game_phase)) / Params::MAX_PHASE;
+    };
 
     [[nodiscard]] inline Score evaluate_psts(const chess::Board& board, EvalTrace* trace = nullptr) {
         Score total = {0, 0};

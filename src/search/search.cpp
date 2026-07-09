@@ -2,6 +2,7 @@
 #include "tables/history_table/history_table.hpp"
 #include "move_ordering/move_ordering.hpp"
 #include "../evaluation/evaluation.hpp"
+#include "misc/search_helper.hpp"
 #include "../uci/uci.hpp"
 
 #include "include/chess.hpp"
@@ -53,6 +54,8 @@ int Search::Search::quiescence_search(chess::Board& board, int ply, int alpha, i
     if (stand_pat > alpha) { alpha = stand_pat; }
 
     for (const chess::Move &move : legal_moves) {
+        if (!SearchHelper::see(board, move, -100)) { continue; }
+         
         board.makeMove(move);
         int eval = -quiescence_search(board, ply + 1, -beta, -alpha);
         board.unmakeMove(move);
@@ -198,6 +201,8 @@ void Search::Search::search_position(UCI::Info info) {
     nodes_searched = 0;
     
     for (int depth = 1; depth <= info.depth; depth++) {
+        if (!can_search) { break; }
+        
         const chess::Movelist legal_moves = order_moves(info.board, best_move, Limits::START_PLY, false);
         
         // Reset
@@ -223,9 +228,8 @@ void Search::Search::search_position(UCI::Info info) {
             }
         }
 
-        if (!can_search) { break; }
-
         SearchHelper::print_search_info(best_eval, depth, nodes_searched, best_move, false);
+        if (!can_search) { break; }
     }
 
     HANDLE_JOIN_TIMER_THREAD(timer_thread);

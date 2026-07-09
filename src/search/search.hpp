@@ -15,19 +15,20 @@
 
 namespace Search {
     namespace Limits {
-        static constexpr int MATE_SCORE = 32000;
-        static constexpr int INF        = 32767;
-        static constexpr int START_PLY  = 0;
-        static constexpr int MAX_PLY    = 32;
-        static constexpr int SEARCH_CANCELLED  = -INF;
-        static constexpr int REPEATED_POSITION = 0;
+        constexpr int MATE_SCORE        = 32000;
+        constexpr int INF               = 32767;
+        constexpr int START_PLY         = 0;
+        constexpr int MAX_PLY           = 32;
+        constexpr int SEARCH_CANCELLED  = -INF;
+        constexpr int REPEATED_POSITION = 0;
     };
 
     namespace Params {
-        static constexpr int RFP_MARGIN = 100;
-        static constexpr int NULL_MOVE_R = 2;
-        static constexpr int LMR_REDUCTION = 1;
-        static constexpr int NMP_OFFSET = 1000;
+        constexpr int RFP_MARGIN    = 100;
+        constexpr int NULL_MOVE_R   = 2;
+        constexpr int LMR_REDUCTION = 1;
+        constexpr int NMP_OFFSET    = 1000;
+        constexpr int SEE_THRESHOLD = -100;
     }
 
     class Search {
@@ -35,11 +36,10 @@ namespace Search {
             void search_position(UCI::Info info);
             
             void clear_tables() { tt_table.clear(); km_table.clear(); history_table.clear(); }
-
         private:
             TranspositionTable::TranspositionTable tt_table;
-            KillerMoveTable::KillerMovesTable km_table;
-            HistoryTable::HistoryTable history_table;
+            KillerMoveTable::KillerMovesTable      km_table;
+            HistoryTable::HistoryTable             history_table;
 
             std::atomic<bool> can_search {true};
             int nodes_searched = 0;
